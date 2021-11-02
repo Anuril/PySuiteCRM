@@ -79,7 +79,7 @@ pip install -r requirements.txt
 ## Usage
 ### Import
 ```python
-from SuiteCRM import SuiteCRM
+from PySuiteCRM.SuiteCRM import SuiteCRM
 
 suitecrm = SuiteCRM(client_id='client_id',
                  client_secret='client_secret',
