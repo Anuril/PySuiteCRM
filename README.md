@@ -3,9 +3,9 @@
 [![GitHub stars](https://img.shields.io/github/stars/RussellJuma/PySuiteCRM)](https://github.com/RussellJuma/PySuiteCRM/stargazers)
 [![GitHub license](https://img.shields.io/github/license/RussellJuma/PySuiteCRM)](https://github.com/RussellJuma/PySuiteCRM/blob/master/LICENSE)
 
-PySuiteCRM ultilizes the SuiteCRM V8 API via Oauth2
+PySuiteCRM utilizes the SuiteCRM V8 API via Oauth2
 
-PySuiteCRM supports all versions of SuiteCRM `7.10+`
+PySuiteCRM supports all versions of SuiteCRM `7.10+, testing on SuiteCRM 8`
 
 ## Contents
 
@@ -113,7 +113,8 @@ result = suitecrm.Contacts.get_all()
 
 ```
 Limitations
-Get cannot filter on custom fields due to [bug #7285](https://github.com/salesagility/SuiteCRM/issues/7285) in SuiteCRM.
+Get cannot filter on custom fields due to [bug #7285](https://github.com/salesagility/SuiteCRM/issues/7285) 
+on SuiteCRM 7.12.1 and prior. Tested on SuiteCRM 7.12.3 ESR, and filtering on custom field works.
 
 ### Delete
 ```python
