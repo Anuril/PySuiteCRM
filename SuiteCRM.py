@@ -1,25 +1,23 @@
-import json
-import uuid
 import atexit
+import json
 import math
-import datetime
-from requests_oauthlib import OAuth2Session
+import uuid
+
 from oauthlib.oauth2 import BackendApplicationClient, TokenExpiredError, InvalidClientError
 from oauthlib.oauth2.rfc6749.errors import CustomOAuth2Error
+from requests_oauthlib import OAuth2Session
 
 
 class SuiteCRM:
 
-    def __init__(self, client_id: str, client_secret: str, url: str, cache: bool = False, cache_timeout: int = 300):
+    def __init__(self, client_id: str, client_secret: str, url: str, logout_on_exit: bool = False):
 
-        self.client_id = client_id
-        self.client_secret = client_secret
         self.baseurl = url
-        self.cache = cache
-        self.cache_timeout_seconds = cache_timeout
-        self.logout_on_exit = False
-        self.headers = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' \
-                       '(KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36'
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._logout_on_exit = logout_on_exit
+        self._headers = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' \
+                        '(KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36'
         self._login()
         self._modules()
 
@@ -55,8 +53,8 @@ class SuiteCRM:
         """
         try:
             self.OAuth2Session.fetch_token(token_url=self.baseurl[:-2] + 'access_token',
-                                           client_id=self.client_id,
-                                           client_secret=self.client_secret)
+                                           client_id=self._client_id,
+                                           client_secret=self._client_secret)
         except InvalidClientError:
             exit('401 (Unauthorized) - client id/secret')
         except CustomOAuth2Error:
@@ -74,10 +72,10 @@ class SuiteCRM:
         """
         # Does session exist?
         if not hasattr(self, 'OAuth2Session'):
-            client = BackendApplicationClient(client_id=self.client_id)
+            client = BackendApplicationClient(client_id=self._client_id)
             self.OAuth2Session = OAuth2Session(client=client,
-                                               client_id=self.client_id)
-            self.OAuth2Session.headers.update({"User-Agent": self.headers,
+                                               client_id=self._client_id)
+            self.OAuth2Session.headers.update({"User-Agent": self._headers,
                                                'Content-Type': 'application/json'})
             with open('AccessToken.txt', 'w+') as file:
                 token = file.read()
@@ -89,7 +87,7 @@ class SuiteCRM:
             self._refresh_token()
 
         # Logout on exit
-        if self.logout_on_exit:
+        if self._logout_on_exit:
             atexit.register(self._logout)
 
     def _logout(self) -> None:
@@ -156,66 +154,6 @@ class Module:
     def __init__(self, suitecrm, module_name):
         self.module_name = module_name
         self.suitecrm = suitecrm
-        self.cache = {}
-        self.cache_time = {}
-        self.cache_status = self.suitecrm.cache
-        self.cache_timeout_seconds = self.suitecrm.cache_timeout_seconds
-
-    def _cache_delete(self, **by):
-        """
-        Clears cache by define by an option
-        :param by: (string) Option of all,id, or old cache
-        :return: None
-        """
-        if 'all' in by and by['all']:
-            self.cache.clear()
-        elif 'id' in by and by['id'] in self.cache and self.cache_status:
-            del self.cache[by['id']]
-            del self.cache_time[by['id']]
-        elif 'old' in by and by['old']:
-            for record, time in self.cache.items():
-                if time + datetime.timedelta(seconds=self.cache_timeout_seconds) <= datetime.datetime.now():
-                    del self.cache[record]
-                    del self.cache_time[record]
-
-    def _cache_set(self, request: dict) -> dict:
-        """
-        Set cache with the id of each record as the key
-        :param request: (JSON) data
-        :return: (dictionary) of request, or (JSON) of request if it fails
-        """
-        try:
-            if len(request['data']) != 0:
-                # A single record
-                if type(request['data']) is dict:
-                    if self.cache_status:
-                        self.cache[request['data']['id']] = request['data']
-                        self.cache_time[request['data']['id']] = datetime.datetime.now()
-                    return request['data']
-                # A list of records
-                if self.cache_status:
-                    for record in request['data']:
-                        self.cache[record['id']] = record
-                        self.cache_time[record['id']] = datetime.datetime.now()
-                return request['data']
-        except:
-            pass
-        return request
-
-    def _cache_get(self, id: str) -> dict:
-        """
-        Retrieves from the cache the record, if cache is expire it will renew
-        :param id: (string) id of the record
-        :return: (dictionary) record
-        """
-        if id in self.cache and self.cache_status:
-            # Expired
-            if self.cache_time[id] + datetime.timedelta(seconds=self.cache_timeout_seconds) >= datetime.datetime.now():
-                return self.cache[id]
-            else:
-                # Expire record, delete cache and request new
-                self._cache_delete(id=id)
-                return self.get(id=id)
 
     def create(self, **attributes) -> dict:
         """
@@ -226,18 +164,17 @@ class Module:
         """
         url = '/module'
         data = {'type': self.module_name, 'id': str(uuid.uuid4()), 'attributes': attributes}
-        return self._cache_set(self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'post', data))
+        return self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'post', data)
 
-    def delete(self, id: str) -> dict:
+    def delete(self, record_id: str) -> dict:
         """
         Delete a specific record by id.
-        :param id: (string) The record id within the module you want to delete.
+        :param record_id: (string) The record id within the module you want to delete.
 
         :return: (dictionary) Confirmation of deletion of record.
         """
         # Delete
-        url = f'/module/{self.module_name}/{id}'
-        self._cache_delete(id=id)
+        url = f'/module/{self.module_name}/{record_id}'
         return self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'delete')
 
     def fields(self) -> list:
@@ -281,10 +218,7 @@ class Module:
             url = f'{url}&sort=-{sort}'
 
         # Execute
-        if 'id' in filters and len(filters) == 1 and filters['id'] in self.cache:
-            return self._cache_get(id=filters['id'])
-        else:
-            return self._cache_set(self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get'))
+        self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get')
 
     def get_all(self, record_per_page: int = 100) -> list[dict]:
         """
@@ -298,39 +232,39 @@ class Module:
         result = []
         for page in range(1, pages):
             url = f'/module/{self.module_name}?page[number]={page}&page[size]={record_per_page}'
-            result.extend(self._cache_set(self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get')))
+            result.extend(self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get'))
         return result
 
-    def update(self, id: str, **attributes) -> dict:
+    def update(self, record_id: str, **attributes) -> dict:
         """
         updates a record.
 
-        :param id: (string) id of the current module record.
+        :param record_id: (string) id of the current module record.
         :param attributes: (**kwargs) fields inside of the record to be updated.
 
         :return: (dictionary) The updated record
         """
         url = '/module'
-        data = {'type': self.module_name, 'id': id, 'attributes': attributes}
-        return self._cache_set(self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'patch', data))
+        data = {'type': self.module_name, 'id': record_id, 'attributes': attributes}
+        return self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'patch', data)
 
-    def get_relationship(self, id: str, related_module_name: str) -> dict:
+    def get_relationship(self, record_id: str, related_module_name: str) -> dict:
         """
         returns the relationship between this record and another module.
 
-        :param id: (string) id of the current module record.
+        :param record_id: (string) id of the current module record.
         :param related_module_name: (string) the module name you want to search relationships for, ie. Contacts.
 
         :return: (dictionary) A list of relationships that this module's record contains with the related module.
         """
-        url = f'/module/{self.module_name}/{id}/relationships/{related_module_name.lower()}'
+        url = f'/module/{self.module_name}/{record_id}/relationships/{related_module_name.lower()}'
         return self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get')
 
-    def create_relationship(self, id: str, related_module_name: str, related_bean_id: str) -> dict:
+    def create_relationship(self, record_id: str, related_module_name: str, related_bean_id: str) -> dict:
         """
         Creates a relationship between 2 records.
 
-        :param id: (string) id of the current module record.
+        :param record_id: (string) id of the current module record.
         :param related_module_name: (string) the module name of the record you want to create a relationship,
                ie. Contacts.
         :param related_bean_id: (string) id of the record inside of the other module.
@@ -338,20 +272,20 @@ class Module:
         :return: (dictionary) A record that the relationship was created.
         """
         # Post
-        url = f'/module/{self.module_name}/{id}/relationships'
+        url = f'/module/{self.module_name}/{record_id}/relationships'
         data = {'type': related_module_name.capitalize(), 'id': related_bean_id}
         return self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'post', data)
 
-    def delete_relationship(self, id: str, related_module_name: str, related_bean_id: str) -> dict:
+    def delete_relationship(self, record_id: str, related_module_name: str, related_bean_id: str) -> dict:
         """
         Deletes a relationship between 2 records.
 
-        :param id: (string) id of the current module record.
+        :param record_id: (string) id of the current module record.
         :param related_module_name: (string) the module name of the record you want to delete a relationship,
                ie. Contacts.
         :param related_bean_id: (string) id of the record inside of the other module.
 
         :return: (dictionary) A record that the relationship was deleted.
         """
-        url = f'/module/{self.module_name}/{id}/relationships/{related_module_name.lower()}/{related_bean_id}'
+        url = f'/module/{self.module_name}/{record_id}/relationships/{related_module_name.lower()}/{related_bean_id}'
         return self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'delete')
