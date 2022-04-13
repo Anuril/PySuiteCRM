@@ -146,10 +146,6 @@ result = suitecrm.Contacts.fields()
 ['name', 'date_entered', 'date_modified', 'etc...']
 ```
 
-## Performance
-With Cache set to `True`, all Get, Create, Update requests are stored local within the module's cache. Cache is only 
-pulled went the specific id is given,ie. `get(suitecrm.Contacts.id='11129071-da4c-18ef-3107-5ead3a71d6fe')` 
-
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
