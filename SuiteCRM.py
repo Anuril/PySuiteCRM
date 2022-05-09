@@ -203,7 +203,7 @@ class Module:
         """
         # Fields Constructor
         if fields:
-            fields = f'?fields[{self.module_name}]=' + ', '.join([fields])
+            fields = f'?fields[{self.module_name}]=' + ', '.join(fields)
             url = f'/module/{self.module_name}{fields}&filter'
         else:
             url = f'/module/{self.module_name}?filter'
