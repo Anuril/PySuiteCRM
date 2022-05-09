@@ -100,7 +100,7 @@ class SuiteCRM:
         with open('AccessToken.txt', 'w+') as file:
             file.write('')
 
-    def request(self, url: str, method, parameters=''):
+    def request(self, url: str, method, parameters='') -> dict:
         """
         Makes a request to the given url with a specific method and data. If the request fails because the token expired
         the session will re-authenticate and attempt the request again with a new token.
@@ -186,7 +186,7 @@ class Module:
         url = f'/module/{self.module_name}?page[number]=1&page[size]=1'
         return list(self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get')['data'][0]['attributes'].keys())
 
-    def get(self, fields: list = None, sort: str = None, **filters):
+    def get(self, fields: list = None, sort: str = None, **filters) -> list[dict]:
         """
         Gets records given a specific id or filters, can be sorted only once, and the fields returned for each record
         can be specified.
@@ -198,13 +198,11 @@ class Module:
 
         Important notice: we don’t support multiple level sorting right now!
 
-        :return: (dictionary/list) A list or dictionary of record(s) that meet the filter criteria.
-                 (list) If more than one record
-                 (dictionary) if a single record
+        :return: (list[dict])
         """
         # Fields Constructor
         if fields:
-            fields = f'?fields[{self.module_name}]=' + ', '.join(fields)
+            fields = f'?fields[{self.module_name}]=' + ','.join(fields)
             url = f'/module/{self.module_name}{fields}&filter'
         else:
             url = f'/module/{self.module_name}?filter'
@@ -223,7 +221,7 @@ class Module:
             url = f'{url}&sort=-{sort}'
 
         # Execute
-        self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get')
+        return self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get')['data']
 
     def get_all(self, record_per_page: int = 100) -> list[dict]:
         """
