@@ -211,7 +211,7 @@ class Module:
         operators = {'=':'EQ', '<>':'NEQ', '>':'GT', '>=':'GTE', '<':'LT', '<=':'LTE'}
         for field, value in filters.items():
             if isinstance(value, dict):
-                url = f'{url}[{field}][{operators[value["operator"]]}]={value}and&'
+                url = f'{url}[{field}][{operators[value["operator"]]}]={value["value"]}and&'
             else:
                 url = f'{url}[{field}][eq]={value}and&'
         url = url[:-4]
