@@ -105,6 +105,11 @@ result = suitecrm.Contacts.get(id='11129071-da4c-18ef-3107-5ead3a71d6fe')
 # Filter records by first and last name, returns a list of records.
 result = suitecrm.Contacts.get(first_name='Russell', last_name='Juma')
 
+# Filter records by that are greater than a certain value and less than a certain value.
+# Pass in a dictionary for a parameter with operator and value
+result = suitecrm.Contacts.get(date_start= {'operator': '>', 'value':'2020-05-08T09:59:00+00:00'}, 
+                               date_end= {'operator': '<', 'value':'2022-05-08T09:59:00+00:00'})
+
 # Filter records by first name, sort on last name, and only return full name and mobile phone in the records.
 result = suitecrm.Contacts.get(fields=['full_name', 'phone_mobile'], first_name= 'Sarah', sort='last_name')
 

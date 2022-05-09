@@ -186,7 +186,7 @@ class Module:
         url = f'/module/{self.module_name}?page[number]=1&page[size]=1'
         return list(self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get')['data'][0]['attributes'].keys())
 
-    def get(self, fields:list=None, sort: str = None, **filters):
+    def get(self, fields: list = None, sort: str = None, **filters):
         """
         Gets records given a specific id or filters, can be sorted only once, and the fields returned for each record
         can be specified.
@@ -194,6 +194,7 @@ class Module:
         :param fields: (list) A list of fields you want to be returned from each record.
         :param sort: (string) The field you want the records to be sorted by.
         :param filters: (**kwargs) fields that the record has that you want to filter on.
+                        ie... date_start= {'operator': '>', 'value':'2020-05-08T09:59:00+00:00'}
 
         Important notice: we don’t support multiple level sorting right now!
 
@@ -209,8 +210,12 @@ class Module:
             url = f'/module/{self.module_name}?filter'
 
         # Filter Constructor
+        operators = {'=':'EQ', '<>':'NEQ', '>':'GT', '>=':'GTE', '<':'LT', '<=':'LTE'}
         for field, value in filters.items():
-            url = f'{url}[{field}][eq]={value}and&'
+            if isinstance(value, dict):
+                url = f'{url}[{field}][{operators[value["operator"]]}]={value}and&'
+            else:
+                url = f'{url}[{field}][eq]={value}and&'
         url = url[:-4]
 
         # Sort
