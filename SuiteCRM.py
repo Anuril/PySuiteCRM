@@ -186,7 +186,7 @@ class Module:
         url = f'/module/{self.module_name}?page[number]=1&page[size]=1'
         return list(self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get')['data'][0]['attributes'].keys())
 
-    def get(self, fields=None, sort: str = None, **filters):
+    def get(self, fields:list=None, sort: str = None, **filters):
         """
         Gets records given a specific id or filters, can be sorted only once, and the fields returned for each record
         can be specified.
