@@ -6,7 +6,7 @@ import uuid
 from oauthlib.oauth2 import BackendApplicationClient, TokenExpiredError, InvalidClientError
 from oauthlib.oauth2.rfc6749.errors import CustomOAuth2Error
 from requests_oauthlib import OAuth2Session
-
+from urllib.parse import quote
 
 class SuiteCRM:
 
@@ -111,6 +111,7 @@ class SuiteCRM:
 
         :return: (dictionary) Data
         """
+        url = quote(url, safe='/:?=&')
         data = json.dumps({"data": parameters})
         try:
             the_method = getattr(self.OAuth2Session, method)
