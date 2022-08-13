@@ -2,11 +2,11 @@ import atexit
 import json
 import math
 import uuid
+from urllib.parse import quote
 
 from oauthlib.oauth2 import BackendApplicationClient, TokenExpiredError, InvalidClientError
 from oauthlib.oauth2.rfc6749.errors import CustomOAuth2Error
 from requests_oauthlib import OAuth2Session
-from urllib.parse import quote
 
 
 class SuiteCRM:
