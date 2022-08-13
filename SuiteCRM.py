@@ -187,7 +187,7 @@ class Module:
         url = f'/module/{self.module_name}?page[number]=1&page[size]=1'
         return list(self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get')['data'][0]['attributes'].keys())
 
-    def get(self, fields: list = None, sort: str = None, **filters) -> list[dict]:
+    def get(self, fields: list = None, sort: str = None, **filters) -> list:
         """
         Gets records given a specific id or filters, can be sorted only once, and the fields returned for each record
         can be specified.
@@ -199,7 +199,7 @@ class Module:
 
         Important notice: we don’t support multiple level sorting right now!
 
-        :return: (list[dict])
+        :return: (list) A list of dictionaries, where each dictionary is a record.
         """
         # Fields Constructor
         if fields:
@@ -209,7 +209,7 @@ class Module:
             url = f'/module/{self.module_name}?filter'
 
         # Filter Constructor
-        operators = {'=':'EQ', '<>':'NEQ', '>':'GT', '>=':'GTE', '<':'LT', '<=':'LTE'}
+        operators = {'=': 'EQ', '<>': 'NEQ', '>': 'GT', '>=': 'GTE', '<': 'LT', '<=': 'LTE'}
         for field, value in filters.items():
             if isinstance(value, dict):
                 url = f'{url}[{field}][{operators[value["operator"]]}]={value["value"]}and&'
@@ -224,10 +224,11 @@ class Module:
         # Execute
         return self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get')['data']
 
-    def get_all(self, record_per_page: int = 100) -> list[dict]:
+    def get_all(self, record_per_page: int = 100) -> list:
         """
         Gets all the records in the module.
-        :return: (list) All the records(dictionary) within a module.
+        :return: (list) A list of dictionaries, where each dictionary is a record.
+                 Will return all records within a module.
         """
         # Get total record count
         url = f'/module/{self.module_name}?page[number]=1&page[size]=1'
