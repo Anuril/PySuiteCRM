@@ -232,7 +232,12 @@ class Module:
             )['data'][0]['attributes'].keys()
         )
 
-    def get(self, fields: list[str], sort: str, **filters) -> list:
+    def get(
+        self,
+        fields: Optional[list[str]] = None,
+        sort: str = '',
+        **filters
+    ) -> list:
         """
         Get records given a specific id or filters.
 
