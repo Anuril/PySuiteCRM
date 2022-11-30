@@ -299,15 +299,13 @@ class Module:
         result = []
         for page in range(1, pages):
             url = '/'.join([
-                'module',
-                self.module_name,
-                '&'.join([
+                '/module',
+                self.module_name]) + '&'.join([
                     f'?page[number]={page}',
                     f'page[size]={record_per_page}'
-                ]),
-            ])
+                ])
             result.extend(self.suitecrm.request(
-                f'{self.suitecrm.baseurl}{url}', 'get'))
+                f'{self.suitecrm.baseurl}{url}', 'get')['data'])
         return result
 
     def update(self, record_id: str, **attributes) -> dict:
