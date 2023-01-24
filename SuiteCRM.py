@@ -4,13 +4,14 @@ import json
 import math
 import uuid
 from urllib.parse import quote
-from typing import Optional
+from typing import Optional, Any
 
 from oauthlib.oauth2 import (BackendApplicationClient,
                              TokenExpiredError,
                              InvalidClientError)
 from oauthlib.oauth2.rfc6749.errors import CustomOAuth2Error
 from requests_oauthlib import OAuth2Session
+from .config_parser import PySuiteCRMConfig, PySuiteCRMConfigException
 
 
 class SuiteCRM:
@@ -18,15 +19,25 @@ class SuiteCRM:
 
     def __init__(
         self,
-        client_id: str,
-        client_secret: str,
-        url: str,
+        client_id: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        url: Optional[str] = None,
+        config: Optional[PySuiteCRMConfig] = None,
         logout_on_exit: bool = False
     ):
         """Initialize the client and connect to the API."""
-        self.baseurl = url
-        self._client_id = client_id
-        self._client_secret = client_secret
+        self.config: PySuiteCRMConfig
+        if config:
+            self.config = config
+        else:
+            if client_id and url and client_secret:
+                self.config = PySuiteCRMConfig(
+                    url=url,
+                    client_id=client_id,
+                    client_secret=client_secret
+                )
+        if not self.config:
+            raise PySuiteCRMConfigException('No valid config found.')
         self._logout_on_exit = logout_on_exit
         self._headers = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) \
                         AppleWebKit/537.36 (KHTML, like Gecko) \
@@ -59,17 +70,41 @@ class SuiteCRM:
         self.Tasks = Module(self, 'Tasks')
         self.Templates = Module(self, 'Templates')
 
+        self._load_custom_modules()
+
+    def _load_custom_modules(self) -> None:
+        """Load the custom modules from the config."""
+        if not self.config.custom_modules:
+            return
+
+        for _module in self.config.custom_modules:
+            try:
+                if hasattr(self, _module['client_name']):
+                    Warning('Attempted to load %s module multiple times!' %
+                            _module['client_name'])
+                    continue
+                setattr(
+                    self,
+                    _module['client_name'],
+                    Module(self, _module['crm_name'])
+                )
+            except AttributeError:
+                Warning('Could not load %s module.' % _module['client_name'])
+
     def _refresh_token(self) -> None:
         """
         Fetch a new token from from token access url, specified in config file.
 
         :return: None
         """
+        print(self.config)
+        tk_url = self.config.url[:-2] + 'access_token'
+        print(tk_url)
         try:
             self.OAuth2Session.fetch_token(
-                token_url=self.baseurl[:-2] + 'access_token',
-                client_id=self._client_id,
-                client_secret=self._client_secret
+                token_url=tk_url,
+                client_id=self.config.client_id,
+                client_secret=self.config.client_secret
             )
         except InvalidClientError:
             exit('401 (Unauthorized) - client id/secret')
@@ -91,9 +126,9 @@ class SuiteCRM:
         """
         # Does session exist?
         if not hasattr(self, 'OAuth2Session'):
-            client = BackendApplicationClient(client_id=self._client_id)
+            client = BackendApplicationClient(client_id=self.config.client_id)
             self.OAuth2Session = OAuth2Session(client=client,
-                                               client_id=self._client_id)
+                                               client_id=self.config.client_id)
             self.OAuth2Session.headers.update(
                 {"User-Agent": self._headers,
                  'Content-Type': 'application/json'}
@@ -118,7 +153,7 @@ class SuiteCRM:
         :return: None
         """
         url = '/logout'
-        self.request(f'{self.baseurl}{url}', 'post')
+        self.request(f'{self.config.url}{url}', 'post')
         with open('AccessToken.txt', 'w+') as file:
             file.write('')
 
@@ -200,7 +235,7 @@ class Module:
         data = {'type': self.module_name, 'id': str(
             uuid.uuid4()), 'attributes': attributes}
         return self.suitecrm.request(
-            f'{self.suitecrm.baseurl}{url}',
+            f'{self.suitecrm.config.url}{url}',
             'post',
             data
         )
@@ -215,7 +250,10 @@ class Module:
         """
         # Delete
         url = f'/module/{self.module_name}/{record_id}'
-        return self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'delete')
+        return self.suitecrm.request(
+            f'{self.suitecrm.config.url}{url}',
+            'delete'
+        )
 
     def fields(self) -> list:
         """
@@ -227,7 +265,7 @@ class Module:
         url = f'/module/{self.module_name}?page[number]=1&page[size]=1'
         return list(
             self.suitecrm.request(
-                f'{self.suitecrm.baseurl}{url}',
+                f'{self.suitecrm.config.url}{url}',
                 'get'
             )['data'][0]['attributes'].keys()
         )
@@ -282,7 +320,7 @@ class Module:
 
         # Execute
         return self.suitecrm.request(
-            f'{self.suitecrm.baseurl}{url}',
+            f'{self.suitecrm.config.url}{url}',
             'get'
         )['data']
 
@@ -295,11 +333,14 @@ class Module:
         """
         # Get total record count
         url = f'/module/{self.module_name}?page[number]=1&page[size]=1'
+        req = self.suitecrm.request(
+            f'{self.suitecrm.config.url}{url}',
+            'get'
+        )
+        if 'total-pages' not in req['meta']:
+            return []
         pages = math.ceil(
-            self.suitecrm.request(
-                f'{self.suitecrm.baseurl}{url}',
-                'get'
-            )['meta']['total-pages'] / record_per_page
+            req['meta']['total-pages'] / record_per_page
         ) + 1
         result = []
         for page in range(1, pages):
@@ -310,7 +351,7 @@ class Module:
                     f'page[size]={record_per_page}'
                 ])
             result.extend(self.suitecrm.request(
-                f'{self.suitecrm.baseurl}{url}', 'get')['data'])
+                f'{self.suitecrm.config.url}{url}', 'get')['data'])
         return result
 
     def update(self, record_id: str, **attributes) -> dict:
@@ -326,7 +367,7 @@ class Module:
         data = {'type': self.module_name,
                 'id': record_id, 'attributes': attributes}
         return self.suitecrm.request(
-            f'{self.suitecrm.baseurl}{url}',
+            f'{self.suitecrm.config.url}{url}',
             'patch',
             data
         )
@@ -347,13 +388,13 @@ class Module:
             record contains with the related module.
         """
         url = '/'.join([
-            'module',
+            '/module',
             self.module_name,
             record_id,
             'relationships',
             related_module_name.lower()
         ])
-        return self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'get')
+        return self.suitecrm.request(f'{self.suitecrm.config.url}{url}', 'get')['data']
 
     def create_relationship(
         self,
@@ -378,7 +419,7 @@ class Module:
             'id': related_bean_id
         }
         return self.suitecrm.request(
-            f'{self.suitecrm.baseurl}{url}',
+            f'{self.suitecrm.config.url}{url}',
             'post',
             data
         )
@@ -407,4 +448,7 @@ class Module:
             related_module_name.lower(),
             related_bean_id
         ])
-        return self.suitecrm.request(f'{self.suitecrm.baseurl}{url}', 'delete')
+        return self.suitecrm.request(
+            f'{self.suitecrm.config.url}{url}',
+            'delete'
+        )
