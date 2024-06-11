@@ -90,9 +90,27 @@ Run the following command inside the directory of SuiteCRMPy
 pip install -r requirements.txt
 ```
 
+## Add your custom modules to PySuiteCRM 
+
+To add your custom modules to PySuiteCRM, create a JSON configuration file with this structure:
+
+```json
+{
+	"url": "https://your_suite_crm.instance.com/Api/V8", #For SuiteCRM 8 you will need to use /legacy/Api/V8
+	"client_id": "yourclientid", 
+	"client_secret":"yourverysecretclientsecret",
+	"custom_modules": [
+	{"client_name": "PendingChanges", # How you want to call the module in the code
+	"crm_name":"reccg_pendingchanges"} # The name of the module in SuiteCRM (= key_modulename )
+	]
+}
+
+```
+
+
 ## Usage
 
-### Import
+### Without Config file
 
 ```python
 from PySuiteCRM.SuiteCRM import SuiteCRM
@@ -100,6 +118,24 @@ from PySuiteCRM.SuiteCRM import SuiteCRM
 suitecrm = SuiteCRM(client_id='client_id',
                  client_secret='client_secret',
                  url='https://your_suite_crm_location/Api/V8')
+
+```
+
+### With Config file
+
+```python
+from PySuiteCRM.SuiteCRM import SuiteCRM
+from PySuiteCRM.config_parser import JSONParser
+
+sc_config = JSONParser('config.json') # The config file you created (See above)
+suitecrm = SuiteCRM(config=sc_config)
+
+```
+You can then use your custom Modules with the "client_name" you defined in the config file.
+
+```python
+
+result = suitecrm.PendingChanges.get_all()
 
 ```
 
