@@ -125,9 +125,9 @@ suitecrm = SuiteCRM(client_id='client_id',
 
 ```python
 from PySuiteCRM.SuiteCRM import SuiteCRM
-from PySuiteCRM.config_parser import JSONParser
+from PySuiteCRM.config_parser import JSONParser, ConfigParser
 
-sc_config = JSONParser('config.json') # The config file you created (See above)
+sc_config: ConfigParser = JSONParser('config.json') # The config file you created (See above)
 suitecrm = SuiteCRM(config=sc_config)
 
 ```
