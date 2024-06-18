@@ -128,7 +128,8 @@ from PySuiteCRM.SuiteCRM import SuiteCRM
 from PySuiteCRM.config_parser import JSONParser, ConfigParser
 
 sc_config: ConfigParser = JSONParser('config.json') # The config file you created (See above)
-suitecrm = SuiteCRM(config=sc_config)
+sc_config.parse_config()
+suitecrm = SuiteCRM(config=sc_config.parsed_config)
 
 ```
 You can then use your custom Modules with the "client_name" you defined in the config file.
